@@ -51,17 +51,79 @@ The initial release of the handbook will focus on the following techniques:
 * **Direct preference optimisation (DPO):** a powerful and promising alternative to PPO.
 
 ## Installation instructions
+there are 2 options to install the project:  
+1. Using conda environment
+2. using docker image  
 
+### 1. Using conda environment
 To run the code in this project, first, create a Python virtual environment using e.g. Conda:
 
 ```shell
 conda create -n handbook python=3.10 && conda activate handbook
 ```
-
 Next, install PyTorch `v2.1.0` - the precise version is important for reproducibility! Since this is hardware-dependent, we
 direct you to the [PyTorch Installation Page](https://pytorch.org/get-started/locally/).
 
-You can then install the remaining package dependencies as follows:
+Now jump to section [from within the virtual environment](#from-within-the-virtual-environment)  
+
+### 2. Using docker image
+create a docker image using the following command:
+```shell
+./env_scripts/docker_build_run_lws.sh
+```
+this will build the required dependencies in a docker image and will run it.  
+now perform the required installations from within the container 
+
+```shell
+python -m pip install .
+```
+You will also need Flash Attention 2 installed, which can be done by running:
+
+> **Note**
+> If your machine has less than 96GB of RAM and many CPU cores, reduce the MAX_JOBS., e.g. `MAX_JOBS=4 pip install flash-attn --no-build-isolation`
+
+```shell
+python -m pip install flash-attn --no-build-isolation
+```
+
+Next, log into your Hugging Face account as follows:
+
+```shell
+huggingface-cli login
+```
+
+Finally, install Git LFS so that you can push models to the Hugging Face Hub:
+
+```shell
+sudo apt-get install git-lfs
+```
+
+
+now its recommended that you'll **open vs code** and attach to the running container s.t. the vs-code will install itself inside the container. also, make sure to open some python files and any other add-ons you'd like to add to vs-code.
+
+now you're ready to commit the changes back to the image:
+
+- Temporaly exit the container (ctrl+P+Q) and commit to the image:
+```
+gkoren@430f346ccb18:~/scratch/code/github/guyk1971/safari$ <press ctrl+p+q>
+gkoren@ipp1-2161:~/safari$ docker commit <container_id> <image_name>
+gkoren@ipp1-2161:~/safari$ docker push <image_name>  # optional
+gkoren@ipp1-2161:~/safari$ docker attach <container_id>
+```
+where:
+- `<container_id>` in this case is `430f346ccb18`  
+- `image_name`= `<docker_repository>/<repo_name>:<updated_image_tag>`  
+
+
+write down the `image_name` and update it in the `docker_run_lws.sh` and `docker_run_lws_multi.sh`.
+in this case, I set the image name  `alignhb_${MY_UNAME}:dev`
+
+next time you want to run the container, just run the `docker_run_lws.sh` script (or `docker_run_lws_multi.sh` for multi containers running in parallel) and it will run the container with the updated image.
+
+
+### From within the virtual environment / container
+
+You can now install the remaining package dependencies as follows:
 
 ```shell
 git clone https://github.com/huggingface/alignment-handbook.git
@@ -89,6 +151,9 @@ Finally, install Git LFS so that you can push models to the Hugging Face Hub:
 ```shell
 sudo apt-get install git-lfs
 ```
+
+### Docker use case - commit the changes to the image (for next use)
+after installing the required packages inside the container, 
 
 You can now check out the `scripts` and `recipes` directories for instructions on how to train some models 🪁!
 

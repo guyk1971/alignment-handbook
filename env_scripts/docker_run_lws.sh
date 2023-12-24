@@ -5,11 +5,12 @@
 # DIR is the directory where the script is saved (should be <project_root/scripts)
 DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 cd $DIR
+echo "Running from ${DIR}"
 
 MY_UID=$(id -u)
 MY_GID=$(id -g)
 MY_UNAME=$(id -un)
-IMAGE=alignhb_${MY_UNAME}:post
+IMAGE=alignhb_${MY_UNAME}:dev
 # mount the scratch folders : assuming you have a relative soft link to scratch created by  'ln -s ../scratch.gkoren_gpu scratch'
 EXTRA_MOUNTS=""
 if [ -d "/home/${MY_UNAME}/scratch" ]; then
