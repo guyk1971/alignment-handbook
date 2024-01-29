@@ -26,13 +26,13 @@ import torch
 import transformers
 from transformers import set_seed
 
-from accelerate import Accelerator
 from alignment import (
     DataArguments,
     H4ArgumentParser,
     ModelArguments,
     SFTConfig,
     apply_chat_template,
+    get_checkpoint,
     get_datasets,
     get_kbit_device_map,
     get_peft_config,
@@ -51,8 +51,6 @@ def main():
 
     # Set seed for reproducibility
     set_seed(training_args.seed)
-
-    accelerator = Accelerator()
 
     ###############
     # Setup logging
@@ -78,6 +76,11 @@ def main():
     logger.info(f"Data parameters {data_args}")
     logger.info(f"Training/evaluation parameters {training_args}")
 
+    # Check for last checkpoint
+    last_checkpoint = get_checkpoint(training_args)
+    if last_checkpoint is not None and training_args.resume_from_checkpoint is None:
+        logger.info(f"Checkpoint detected, resuming training at {last_checkpoint=}.")
+
     ###############
     # Load datasets
     ###############
@@ -85,6 +88,7 @@ def main():
     logger.info(
         f"Training on the following datasets and their proportions: {[split + ' : ' + str(dset.num_rows) for split, dset in raw_datasets.items()]}"
     )
+    column_names = list(raw_datasets["train"].features)
 
     ################
     # Load tokenizer
@@ -94,7 +98,13 @@ def main():
     #####################
     # Apply chat template
     #####################
-    raw_datasets = raw_datasets.map(apply_chat_template, fn_kwargs={"tokenizer": tokenizer, "task": "sft"})
+    raw_datasets = raw_datasets.map(
+        apply_chat_template,
+        fn_kwargs={"tokenizer": tokenizer, "task": "sft"},
+        num_proc=data_args.preprocessing_num_workers,
+        remove_columns=column_names,
+        desc="Applying chat template",
+    )
     train_dataset = raw_datasets["train"]
     eval_dataset = raw_datasets["test"]
 
@@ -142,10 +152,14 @@ def main():
     # Training loop
     ###############
     logger.info("*** Train ***")
-    train_result = trainer.train()
+    checkpoint = None
+    if training_args.resume_from_checkpoint is not None:
+        checkpoint = training_args.resume_from_checkpoint
+    elif last_checkpoint is not None:
+        checkpoint = last_checkpoint
+    train_result = trainer.train(resume_from_checkpoint=checkpoint)
     metrics = train_result.metrics
-    max_train_samples = data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
-    metrics["train_samples"] = min(max_train_samples, len(train_dataset))
+    metrics["train_samples"] = len(train_dataset)
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)
     trainer.save_state()
@@ -156,8 +170,7 @@ def main():
     if training_args.do_eval:
         logger.info("*** Evaluate ***")
         metrics = trainer.evaluate()
-        max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
-        metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
+        metrics["eval_samples"] = len(eval_dataset)
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
@@ -169,23 +182,23 @@ def main():
     logger.info(f"Model saved to {training_args.output_dir}")
 
     # Save everything else on main process
-    if accelerator.is_main_process:
-        kwargs = {
-            "finetuned_from": model_args.model_name_or_path,
-            "dataset": list(data_args.dataset_mixer.keys()),
-            "dataset_tags": list(data_args.dataset_mixer.keys()),
-            "tags": ["alignment-handbook"],
-        }
+    kwargs = {
+        "finetuned_from": model_args.model_name_or_path,
+        "dataset": list(data_args.dataset_mixer.keys()),
+        "dataset_tags": list(data_args.dataset_mixer.keys()),
+        "tags": ["alignment-handbook"],
+    }
+    if trainer.accelerator.is_main_process:
         trainer.create_model_card(**kwargs)
         # Restore k,v cache for fast inference
         trainer.model.config.use_cache = True
         trainer.model.config.save_pretrained(training_args.output_dir)
 
-        if training_args.push_to_hub is True:
-            logger.info("Pushing to hub...")
-            trainer.push_to_hub()
+    if training_args.push_to_hub is True:
+        logger.info("Pushing to hub...")
+        trainer.push_to_hub(**kwargs)
 
-    accelerator.wait_for_everyone()
+    logger.info("*** Training complete ***")
 
 
 if __name__ == "__main__":

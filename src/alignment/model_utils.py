@@ -13,17 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from pathlib import Path
 from typing import Dict
 
 import torch
 from transformers import AutoTokenizer, BitsAndBytesConfig, PreTrainedTokenizer
+from transformers.trainer_utils import get_last_checkpoint
 
 from accelerate import Accelerator
 from huggingface_hub import list_repo_files
 from huggingface_hub.utils._validators import HFValidationError
 from peft import LoraConfig, PeftConfig
 
-from .configs import DataArguments, ModelArguments
+from .configs import DataArguments, DPOConfig, ModelArguments, SFTConfig
 from .data import DEFAULT_CHAT_TEMPLATE
 
 
@@ -37,11 +39,15 @@ def get_kbit_device_map() -> Dict[str, int] | None:
     return {"": get_current_device()} if torch.cuda.is_available() else None
 
 
-def get_quantization_config(model_args) -> BitsAndBytesConfig | None:
+def get_quantization_config(model_args: ModelArguments) -> BitsAndBytesConfig | None:
     if model_args.load_in_4bit:
+        compute_dtype = torch.float16
+        if model_args.torch_dtype not in {"auto", None}:
+            compute_dtype = getattr(torch, model_args.torch_dtype)
+
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16,  # For consistency with model weights, we use the same value as `torch_dtype` which is float16 for PEFT models
+            bnb_4bit_compute_dtype=compute_dtype,
             bnb_4bit_quant_type=model_args.bnb_4bit_quant_type,
             bnb_4bit_use_double_quant=model_args.use_bnb_nested_quant,
         )
@@ -73,7 +79,7 @@ def get_tokenizer(model_args: ModelArguments, data_args: DataArguments) -> PreTr
 
     if data_args.chat_template is not None:
         tokenizer.chat_template = data_args.chat_template
-    elif tokenizer.chat_template is None:
+    elif tokenizer.chat_template is None and tokenizer.default_chat_template is None:
         tokenizer.chat_template = DEFAULT_CHAT_TEMPLATE
 
     return tokenizer
@@ -104,3 +110,10 @@ def is_adapter_model(model_name_or_path: str, revision: str = "main") -> bool:
         # If not, check local repo
         repo_files = os.listdir(model_name_or_path)
     return "adapter_model.safetensors" in repo_files or "adapter_model.bin" in repo_files
+
+
+def get_checkpoint(training_args: SFTConfig | DPOConfig) -> Path | None:
+    last_checkpoint = None
+    if os.path.isdir(training_args.output_dir):
+        last_checkpoint = get_last_checkpoint(training_args.output_dir)
+    return last_checkpoint

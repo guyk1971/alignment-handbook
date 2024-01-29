@@ -19,7 +19,7 @@ However, we know from the [InstructGPT](https://huggingface.co/papers/2203.02155
 The Alignment Handbook aims to fill that gap by providing the community with a series of robust training recipes that span the whole pipeline.
 
 ## News 🗞️
-
+* **January 18, 2024:** We release a suite of Evalutions of DPO vs KTO vs IPO, see the [recipe](recipes/pref_align_scan/README.md) and the [blogpost](https://huggingface.co/blog/pref-tuning)
 * **November 10, 2023:** We release all the training code to replicate Zephyr-7b-β 🪁! We also release [No Robots](https://huggingface.co/datasets/HuggingFaceH4/no_robots), a brand new dataset of 10,000 instructions and demonstrations written entirely by skilled human annotators.
 
 ## Links 🔗
@@ -61,7 +61,7 @@ To run the code in this project, first, create a Python virtual environment usin
 ```shell
 conda create -n handbook python=3.10 && conda activate handbook
 ```
-Next, install PyTorch `v2.1.0` - the precise version is important for reproducibility! Since this is hardware-dependent, we
+Next, install PyTorch `v2.1.2` - the precise version is important for reproducibility! Since this is hardware-dependent, we
 direct you to the [PyTorch Installation Page](https://pytorch.org/get-started/locally/).
 
 Now jump to section [from within the virtual environment](#from-within-the-virtual-environment)  
@@ -133,12 +133,12 @@ python -m pip install .
 
 You will also need Flash Attention 2 installed, which can be done by running:
 
-> **Note**
-> If your machine has less than 96GB of RAM and many CPU cores, reduce the MAX_JOBS., e.g. `MAX_JOBS=4 pip install flash-attn --no-build-isolation`
-
 ```shell
-python -m pip install flash-attn --no-build-isolation
+python -m pip install flash-attn==2.3.6 --no-build-isolation
 ```
+
+> **Note**
+> If your machine has less than 96GB of RAM and many CPU cores, reduce the `MAX_JOBS` arguments, e.g. `MAX_JOBS=4 pip install flash-attn==2.3.6 --no-build-isolation`
 
 Next, log into your Hugging Face account as follows:
 
