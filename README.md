@@ -65,7 +65,14 @@ conda create -n handbook python=3.10 && conda activate handbook
 Next, install PyTorch `v2.1.2` - the precise version is important for reproducibility! Since this is hardware-dependent, we
 direct you to the [PyTorch Installation Page](https://pytorch.org/get-started/locally/).
 
-Now jump to section [from within the virtual environment](#from-within-the-virtual-environment)  
+You can now install the remaining package dependencies as follows:
+
+```shell
+git clone https://github.com/huggingface/alignment-handbook.git
+cd ./alignment-handbook/
+python -m pip install .
+python -m pip install flash-attn==2.3.6 --no-build-isolation
+```
 
 ### 2. Using docker image
 create a docker image using the following command:
@@ -77,15 +84,13 @@ now perform the required installations from within the container
 
 ```shell
 python -m pip install .
-```
-You will also need Flash Attention 2 installed, which can be done by running:
-
-> **Note**
-> If your machine has less than 96GB of RAM and many CPU cores, reduce the MAX_JOBS., e.g. `MAX_JOBS=4 pip install flash-attn --no-build-isolation`
-
-```shell
 python -m pip install flash-attn --no-build-isolation
 ```
+
+### rest of instructions for both virtual env and container scenarios
+
+> **Note**
+> If your machine has less than 96GB of RAM and many CPU cores, reduce the `MAX_JOBS` arguments, e.g. `MAX_JOBS=4 pip install flash-attn==2.3.6 --no-build-isolation`
 
 Next, log into your Hugging Face account as follows:
 
@@ -94,14 +99,14 @@ huggingface-cli login
 # or
 ~/.local/bin/huggingface-cli login # if the above fails on 'command not found'
 ```
-note that if you get an error  `bash: huggingface-cli: command not found`  try the following
+
 Finally, install Git LFS so that you can push models to the Hugging Face Hub:
 
 ```shell
 sudo apt-get install git-lfs
 ```
 
-
+### Post installation for docker image scenario  
 now its recommended that you'll **open vs code** and attach to the running container s.t. the vs-code will install itself inside the container. also, make sure to open some python files and any other add-ons you'd like to add to vs-code.
 
 now you're ready to commit the changes back to the image:
@@ -124,40 +129,7 @@ in this case, I set the image name  `alignhb_${MY_UNAME}:dev`
 next time you want to run the container, just run the `docker_run_lws.sh` script (or `docker_run_lws_multi.sh` for multi containers running in parallel) and it will run the container with the updated image.
 
 
-### From within the virtual environment / container
-
-You can now install the remaining package dependencies as follows:
-
-```shell
-git clone https://github.com/huggingface/alignment-handbook.git
-cd ./alignment-handbook/
-python -m pip install .
-```
-
-You will also need Flash Attention 2 installed, which can be done by running:
-
-```shell
-python -m pip install flash-attn==2.3.6 --no-build-isolation
-```
-
-> **Note**
-> If your machine has less than 96GB of RAM and many CPU cores, reduce the `MAX_JOBS` arguments, e.g. `MAX_JOBS=4 pip install flash-attn==2.3.6 --no-build-isolation`
-
-Next, log into your Hugging Face account as follows:
-
-```shell
-huggingface-cli login
-```
-
-Finally, install Git LFS so that you can push models to the Hugging Face Hub:
-
-```shell
-sudo apt-get install git-lfs
-```
-
-### Docker use case - commit the changes to the image (for next use)
-after installing the required packages inside the container, 
-
+## Using the handbook
 You can now check out the `scripts` and `recipes` directories for instructions on how to train some models 🪁!
 
 ## Project structure
@@ -167,7 +139,9 @@ You can now check out the `scripts` and `recipes` directories for instructions o
 ├── Makefile                    <- Makefile with commands like `make style`
 ├── README.md                   <- The top-level README for developers using this project
 ├── chapters                    <- Educational content to render on hf.co/learn
+├── env_scripts                 <- scripts to create the environment (docker)
 ├── recipes                     <- Recipe configs, accelerate configs, slurm scripts
+├── sandbox                     <- my own experiments with the tools in this repo
 ├── scripts                     <- Scripts to train and evaluate chat models
 ├── setup.cfg                   <- Installation config (mostly used for configuring code quality & tests)
 ├── setup.py                    <- Makes project pip installable (pip install -e .) so `alignment` can be imported
