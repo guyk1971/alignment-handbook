@@ -90,8 +90,10 @@ Next, log into your Hugging Face account as follows:
 
 ```shell
 huggingface-cli login
+# or
+~/.local/bin/huggingface-cli login # if the above fails on 'command not found'
 ```
-
+note that if you get an error  `bash: huggingface-cli: command not found`  try the following
 Finally, install Git LFS so that you can push models to the Hugging Face Hub:
 
 ```shell
